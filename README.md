@@ -39,14 +39,14 @@ sub-command files (e.g., `-205-table1.do`).
 
 I make extensive use of personal `ado` files. These are not shared in this
 repo and I do not keep track of which of the commands I call are custom `ado`s.
-The user will discover this, frustratingly, by `command not found` errors
+The user will discover this, frustratingly, by `command XYZ is unrecognized` errors
 thrown by Stata. A very easy way to avoid this is to add a folder holding my
 custom `ado`s to your `adopath`. The way to do this is to run
 
 `adopath +"https://quantsci.s3.amazonaws.com/Jones-ADO/"`
 
 from the Stata command line before trying to execute the command files. Now, it
-is possible you might run these programs and still get a `command not found`
+is possible you might run these programs and still get a `command XYZ is unrecognized`
 error, but in this case the missing command is a command available from
 SSC (or elsewhere). A way to protect yourself from this error is to also add a
 copy of my plus commands to your `adopath`, with:
