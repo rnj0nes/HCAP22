@@ -1,0 +1,161 @@
+% HRS/HCAP Dementia Algorithm with Cognition Cuts at 35
+% Rich Jones
+% `r format(Sys.Date(), format="%B %d %Y")`
+<body style="max-width: 48em;">
+</body>
+
+
+<!--
+cd /Users/rnj/Dropbox/Work/HCAP22/POSTED/ANALYSIS/Dementia-algorithm/
+markstatit dementia-algorithm-cut35-2021-10-05.stmd , strict keep bundle
+-->
+
+## Abstract and overall results
+
+The dementia algorithm cutting cognitive scores at "35".
+
+A threshold of 35 means that a person is counted as being impaired on
+a domain if the standardized and normalized score is less than or
+equal to 35 on a T score metric.
+
+
+
+## Introduction
+
+As a reminder, our algorithm looks like this:
+
+![Figure 1. HCAP Diagnosis Algorithm](HCAP-Diagnosis-Algorithm-2021-09-22.png)
+
+An important improvement to our _data imputation_ step is included in this
+report. In our first run through the development of the HRS/HCAP diagnosis
+algorithm, Rich imputed impairment ratings (impaired or not 1/0) for the
+various cognitive domains. On the very good suggestion of David Weir, the
+procedure now imputes missing cognitive performance score variable (normalized,
+standardized) and then makes cuts to identify persons with impairment. Also, a
+fixed seed has been added to the procedure so that it is replicable.
+
+## Results
+
+```s/
+qui {
+  global data_path "/Users/rnj/Dropbox/Work/HCAP22/POSTED/ANALYSIS/Norms-with-weights-202109/"
+  local impairment_threshold = 35
+  use $data_path/w991-003-postimputation.dta , clear
+  keep if w105==1
+  * note orientation omitted from below list
+  foreach x in memm1 exfm1 lflm1 vdvis1 {
+     cap drop I`x'
+     gen I`x'=T`x'<`impairment_threshold'
+  }
+  cap drop impairedcat
+  gen impairedcat = 0
+  * note orientation included below
+  foreach x in memm1 exfm1  vdvis1  lflm1 vdori1 {
+     replace impairedcat=impairedcat+1 if I`x'==1
+  }
+  replace impairedcat=2 if impairedcat>=2 & missing(impairedcat)~=1
+  vlabel impairedcat 0 1 2+
+  * Informant concern condition
+  * There are two versions
+  *  - One uses cuts of ">=" 3 or 0 (Jorm, Blessed) [Iinformant99]
+  *  - Two uses cuts of ">=" 3.4 or 2 (Jorm, Blessed) [Iinformant19a]
+  * -------------------------------------------------------- Informant99 for MCI
+  cap drop Ih1ijormsc99
+  cap drop Ih1ibl1tot99
+  cap drop Iinformant99
+  * use one or the other (Jorm, Blessed) if the other is missing
+  gen Ih1ijormsc99 = h1ijormsc > 3 if missing(h1ijormsc)~=1
+  la var Ih1ijormsc99 "h1ijormsc > 3"
+  gen Ih1ibl1tot99 = h1ibl1tot > 0 if missing(h1ibl1tot)~=1
+  la var Ih1ibl1tot99 "h1ibl1tot > 0 "
+  gen Iinformant99 = Ih1ijormsc99 == 1 | Ih1ibl1tot99 == 1
+  replace Iinformant99 = 1 if Ih1ijormsc99 == 1 & missing(Ih1ibl1tot99)
+  replace Iinformant99 = 1 if Ih1ibl1tot99 == 1 & missing(Ih1ijormsc99)
+  * -------------------------------------------------- Informant19a for Dementia
+  cap drop Ih1ijormsc19a
+  cap drop Ih1ibl1tot19a
+  cap drop Iinformant19a
+  gen Ih1ijormsc19a = h1ijormsc >= 3.4 if missing(h1ijormsc)~=1
+  la var Ih1ijormsc19a "h1ijormsc >= 3.4"
+  gen Ih1ibl1tot19a = h1ibl1tot >= 2  if missing(h1ibl1tot)~=1
+  la var Ih1ibl1tot19a "h1ibl1tot >= 2 "
+  gen Iinformant19a = Ih1ijormsc19a == 1 | Ih1ibl1tot19a == 1
+  replace Iinformant19a = 1 if Ih1ijormsc19a == 1 & missing(Ih1ibl1tot19a)
+  replace Iinformant19a = 1 if Ih1ibl1tot19a == 1 & missing(Ih1ijormsc19a)
+  * Worse self-reated memory
+  * Really, not same or better self-rated memory
+  * ---------------------------------------------------------------
+  gen Ipd102=inlist(pd102,1,2)~=1
+  * HCAP Diagnosis
+  cap drop hcapdx
+  gen hcapdx = .
+  replace hcapdx=3 if impairedcat==2 & Iinformant19a==1 // dementia
+  replace hcapdx=2 if impairedcat==2 & Iinformant19a==0 // mci
+  replace hcapdx=2 if impairedcat==1 & Iinformant99==1  // mci
+  replace hcapdx=2 if impairedcat==1 & Iinformant99==0 & Ipd102==1 // mci
+  replace hcapdx=1 if impairedcat==1 & Iinformant99==0 & Ipd102==0 // normal
+  replace hcapdx=1 if impairedcat==0
+  la def hcapdx 1 "1-normal" 2 "2-mci" 3 "3-dementia"
+  la values hcapdx hcapdx
+  noisily di _n "Unweighted distribution of final classifications (`impairment_threshold' cut)" _n
+  noisily tab hcapdx , m
+  noisily di _n "Weighted distribution of final classifications (`impairment_threshold' cut)" _n
+  noisily tab hcapdx , m ,[fw=hcap16wgtr]
+  noisily di _n "Weighted distribution of final classifications by race/ethnicity group (`impairment_threshold' cut)" _n
+  noisily tab hcapdx racecat3 , m col, [fw=hcap16wgtr]
+  * ---------------------------------------------------------------
+  * For the figure
+  gen n11 = impairedcat<2 // impaired 2+ domains: no
+  gen n21 = impairedcat==2 // impaired 2+ domains: yes
+  gen n22 = impairedcat==1 if impairedcat<2 // impaired 1 domain: yes
+  gen n23 = impairedcat==0 if impairedcat<2 // impaired 1 domain: no
+  gen n31 = Iinformant19a==1 if impairedcat==2 // informant rated impairment: yes
+  gen n32 = Iinformant19a==0 if impairedcat==2 // informant rated impairment: no
+  gen n33 = Iinformant99==1 if impairedcat==1 // informant rated concerns: yes
+  gen n34 = Iinformant99==0 if impairedcat==1 // informant rated concerns: no
+  gen n41 = Ipd102==1 if Iinformant99==0 & impairedcat==1 // self-rated memory concerns: yes
+  gen n42 = Ipd102==0 if Iinformant99==0 & impairedcat==1 // self-rated memory concerns: no
+  gen n51 = hcapdx==3 // dementia
+  gen n52 = hcapdx==2 // mci
+  gen n53 = hcapdx==1 // normal
+  la var n11 "impaired 2+ domains: no"
+  la var n21 "impaired 2+ domains: yes"
+  la var n22 "impaired 1 domain: yes"
+  la var n23 "impaired 1 domain: no"
+  la var n31 "informant rated impairment: yes"
+  la var n32 "informant rated impairment: no"
+  la var n33 "informant rated concerns: yes"
+  la var n34 "informant rated concerns: no"
+  la var n41 "self-rated memory concerns: yes"
+  la var n42 "self-rated memory concerns: no"
+  la var n51 "dementia"
+  la var n52 "mci"
+  la var n53 "normal"
+  keep hhid pn hcapdx hcap16wgtr n11-n53
+  save hcapdx.dta , replace
+  rdoc init results.csv , replace
+  r node, label, n, denom, p, pw, Npw
+  foreach var of varlist n11-n53 {
+     qui {
+        local foo: var lab `var'
+        su `var'
+        local goo  = `r(N)'
+        local hoo  =  `r(sum)'
+        local ioo : di %5.3f `r(mean)'
+        logit `var' [pw=hcap16wgtr]
+        local joo : di %5.3f invlogit(_b[_cons])
+        replace `var' = 0 if missing(`var')
+        logit `var' [pw=hcap16wgtr]
+        local koo : di %5.3f invlogit(_b[_cons])
+        r `var', `foo', `hoo' , `goo', `ioo' , `joo',`koo'
+     }
+  }
+  rdoc close
+  type results.csv
+  drop hcap16wgtr
+  merge 1:1 hhid pn using $data_path/w991-003-postimputation.dta , nogen
+  save algorithm.dta , replace
+}
+```
+
+(fin)

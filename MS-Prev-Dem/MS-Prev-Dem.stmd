@@ -1,0 +1,556 @@
+% The Prevalence of Dementia and Mild Cognitive Impairment in the United States: Findings from the Health and Retirement Study (HRS) Harmonized Cognitive Assessment Protocol (HCAP) Project
+% Numerical contributions
+% `r format(Sys.Date(), format="%B %d %Y")`
+<body style="max-width: 48em;">
+</body>
+
+
+<!--
+cd /Users/rnj/Dropbox/Work/HCAP22/POSTED/ANALYSIS/MS-Prev-Dem/
+markstatit MS-Prev-Dem.stmd , strict keep bundle docx
+-->
+
+```r/
+setwd("/Users/rnj/Dropbox/Work/HCAP22/POSTED/ANALYSIS/MS-Prev-Dem/")
+library(pacman)
+pacman::p_load(tidyverse, haven, weights,lubridate,qwraps2,survey)
+dfI <- haven::read_dta("/Users/rnj/Dropbox/Work/hrs/POSTED/DATA/SOURCE/HC16/HC16sta/HC16HP_I.dta")
+dfR <- haven::read_dta("/Users/rnj/Dropbox/Work/hrs/POSTED/DATA/SOURCE/HC16/HC16sta/HC16HP_R.dta")
+tracker <- haven::read_dta("/Users/rnj/Dropbox/Work/hrs/POSTED/DATA/SOURCE/trk2018v2a/trk2018tr_r.dta")
+dfCFA <- haven::read_dta("/Users/rnj/Dropbox/Work/HCAP22/POSTED/ANALYSIS/CFA-HCAP/w401.dta")
+dfAlgorithm_preimputation <- as.data.frame(haven::read_dta("/Users/rnj/Dropbox/Work/HCAP22/POSTED/ANALYSIS/Norms-with-weights-202109/w991-002-preimputation.dta"))
+dfAlgorithm <- as.data.frame(haven::read_dta("/Users/rnj/Dropbox/Work/HCAP22/POSTED/ANALYSIS/Dementia-algorithm/algorithm.dta"))
+dfAlgorithm_results <- as.data.frame(read.csv("/Users/rnj/Dropbox/Work/HCAP22/POSTED/ANALYSIS/Dementia-algorithm/results.csv"))
+
+
+# functions --------------------------------
+# proportion, if
+pif <- function(df,y,x,d=0){
+	u <- df %>% dplyr::filter(y == x)
+	p <- nrow(u) / nrow(df)
+	paste0(round(p*100,digits=d),"%")
+}
+
+# example
+# p1 <- pif(mtcars,mtcars$am,1)
+
+
+# number , if
+nif <- function(df,y,x,d=0){
+	u <- df %>% dplyr::filter(y == x)
+	n <- nrow(u)
+	n
+}
+
+# number and percent using qwraps2
+np <- function(x) {
+   qwraps2::n_perc(x,show_symbol = FALSE, na_rm = TRUE, show_denom = "never", digits=0)
+}
+# np(df$female)
+
+
+# mean, sd
+# see http://adv-r.had.co.nz/Computing-on-the-language.html
+# and # https://stackoverflow.com/questions/3245862/format-numbers-to-significant-figures-nicely-in-r
+msd <- function(df,y){
+   y <- substitute(y)
+   pos <- setNames(as.list(seq_along(df)), names(df))
+   ypos <- eval(y,pos)
+	 sd <- formatC(signif(sd(df[,ypos],na.rm=TRUE),digits=2), digits=2, format="fg")
+	 # it would be nice to figure out how many decimal places are in the
+	 # standard deviation, and then use that precision for the mean
+	 mean <- formatC(signif(mean(df[,ypos],na.rm=TRUE),digits=3), digits=3, format="fg")
+	 print(paste0(mean," (",sd,")"))
+}
+# msd(dfAlgorithm_preimputation,hcapage)
+
+# msdif(dfAlgorithm_preimputation,hcapage,normedcld,0)
+# get the mean of variable y from data frame df but restrict to values x = z
+msdif <- function(df,y,x,z){
+   pos <- setNames(as.list(seq_along(df)), names(df))
+   x <- substitute(x)
+   y <- substitute(y)
+   xpos <- eval(x,pos)
+   ypos <- eval(y,pos)
+   u <- df[c(ypos,xpos)]
+   u <- u[which(u[,2]==z),]
+   sd <- (formatC(signif(sd(u[,1],na.rm=TRUE),digits=2), digits=2, format="fg"))
+   mean <- (formatC(signif(mean(u[,1],na.rm=TRUE),digits=3), digits=3, format="fg"))
+   print(paste0(mean," (",sd,")"))
+}
+# data(mtcars)
+# df <- as.data.frame(mtcars)
+# rethinking::precis(df)
+# msdif(df,mpg,am,1)
+
+
+# comma format
+cf <- function(x){
+   format(x,big.mark=",",digits=0)
+}
+
+```
+
+
+### Participants
+The sample for the HCAP study were randomly selected from HRS panel respondents who were age 65 or older, born in 1952 or earlier, and who completed their 2016 HRS core interview. If 2 eligible people were found within one household, one was randomly selected to participate in HCAP. For every participant, an informant who was one of up to three individuals nominated by the respondent. Informant relationships with the respondent included spouse/partner (`r pif(dfI,dfI$H1IRTR,1)`), child (`r pif(dfI,dfI$H1IRTR,2)`), friend (`r pif(dfI,dfI$H1IRTR,6)`), sibling (`r pif(dfI,dfI$H1IRTR,4)`), grandchild (`r pif(dfI,dfI$H1IRTR,3)`), parent (`r pif(dfI,dfI$H1IRTR,5)`), neighbor (`r pif(dfI,dfI$H1IRTR,8)`), guardian (`r pif(dfI,dfI$H1IRTR,7,1)`), or other relationship (`r pif(dfI,dfI$H1IRTR,97)`). The mean number of years an informant reported knowing the respondent was `r round(mean(dfI$H1IYRSKNOW[dfI$H1IYRSKNOW<97], na.rm=TRUE))` (SD = `r  round(sd(dfI$H1IYRSKNOW[dfI$H1IYRSKNOW<97], na.rm=TRUE))`; Range = `r round(min(dfI$H1IYRSKNOW[dfI$H1IYRSKNOW<97], na.rm=TRUE))` – `r round(max(dfI$H1IYRSKNOW[dfI$H1IYRSKNOW<97], na.rm=TRUE))`). The HCAP was administered either in English (`r pif(dfR,dfR$LANGUAGE_IW,1)`), in Spanish (`r pif(dfR,dfR$LANGUAGE_IW,2)`), or both (`r pif(dfR,dfR$LANGUAGE_IW,3,1)`).
+
+```r/
+dfR$date <- as.Date(paste0(as.character(dfR$H1RIWYEAR),"-",str_pad(as.character(dfR$H1RIWMONTH),2,pad="0"),"-01"))
+startmonth <- month.name[month(min(dfR$date,na.rm=TRUE))]
+startyear <- year(min(dfR$date,na.rm=TRUE))
+endmonth <- month.name[month(max(dfR$date,na.rm=TRUE))]
+endyear <- year(max(dfR$date,na.rm=TRUE))
+
+```
+
+```r/
+N_eligible <- nrow(tracker %>% dplyr::filter(hcap16rel > 0) %>% dplyr::filter(hcap16rel <10))
+N_particpate <- nrow(dfR)
+response_rate <- round(100*N_particpate/N_eligible)
+response_rate <- paste0(response_rate,"%")
+```
+
+Of `r cf(nrow(tracker %>% dplyr::filter(hcap16rel > 0) %>% dplyr::filter(hcap16rel <10)))` eligible cases, `r cf(nrow(dfR))` completed the HCAP interview between `r startmonth` `r startyear` and `r endmonth` `r endyear` for a final response rate of `r response_rate`. There were `r nif(dfR,dfR$H1RIFLAG,3)` cases where only an informant interview was collected when the HCAP respondent was not able to conduct an interview, but an informant was nominated and enrolled. A total of `r nif(dfR,dfR$H1RIFLAG,2)` cases were respondent only cases where an informant was not nominated by the respondent or where a nominated informant was not enrolled. Overall, `r pif(dfR,dfR$H1RIFLAG,1)` of HCAP cases included both a respondent and informant interview.
+
+
+
+### Determination of dementia prevalence in HCAP involved three phases.
+
+```r/
+Nnormexcld0 <- nif(dfAlgorithm_preimputation,dfAlgorithm_preimputation$normexcld,0)
+Nnormexcld1 <- nif(dfAlgorithm_preimputation,dfAlgorithm_preimputation$normexcld,1)
+Nhcap <- nrow(dfR)
+Ninformantonly <- nif(dfR,dfR$H1RIFLAG,3)
+```
+
+Our analysis begins with estimates of cognitive performance based on the HCAP battery, calibrated using latent variable models and described previously 2. Briefly, we subjected HCAP cognitive performance (N = `r cf(nrow(dfCFA))`) data to a series of factor analysis models, and derived factors and factor score estimates based on HCAP performance in five domains: memory, executive functioning, language, visuospatial, and orientation. The factor scores are described in Table 2. In this project, we normalize the estimated factor scores, standardize with respect to demographic variables, and derive a classification algorithm for mild cognitive impairment and probable dementia using informant report of cognitive or functional impairment or self-report of subjective memory worsening. The three phases summarized in this manuscript include (i) selecting the robust normative sample (N = `r cf(Nnormexcld0)`), (ii) standardizing within the normative sample with respect to sociodemographic characteristics, and (iii) developing an algorithm for the classification of dementia status using additional informant and self-report information using all participants in the HCAP study (N = `r cf(Nhcap)`). All statistical analyses were conducted with Stata (version 16.1, Stata Corp., College Station, Texas) and R (version 4.1.1, R Foundation for Statistical Computing, Vienna, Austria). Sampling weights were used in statistical analyses, and summary statistics that reflect the use of sampling weights are highlighted in the results. Missing data for cognitive performance data or informant data were singly imputed as Bayesian plausible values using Mplus software (version 8.6, Muthén & Muthén, Los Angeles, CA).
+
+
+> Table X. Selection of robust normative sample from HCAP Participants
+
+Rich leaving for Ryan
+
+The final robust normative sample included
+N = `r cf(Nnormexcld0)` participants in the HCAP field study. Of HCAP participants,
+N = `r cf(Nnormexcld1-Ninformantonly)` persons who participated in the HCAP cognitive assessment, and an additional
+N = `r cf(Ninformantonly)` people who did not complete the cognitive testing, were excluded from the normative sample.
+
+**Table X. Participant Characteristics**
+
+```r/
+df <- dfAlgorithm_preimputation
+df0 <- dfAlgorithm_preimputation[which(dfAlgorithm_preimputation$normexcld==0),]
+df1 <- dfAlgorithm_preimputation[which(dfAlgorithm_preimputation$normexcld==1),]
+```
+
+
+|Characteristic|Overall|Robust norms sample|Not in robust norms sample|
+|--------------|-------------:|------------:|-------------------------:|
+|Total (N, %)           | `r cf(Nhcap)`	(100) | `r cf(Nnormexcld0)`	(100) | `r cf(Nnormexcld1)`	(100) |
+|Age (years; mean, SD)	| `r  msd(df,hcapage)`	| `r msdif(df,hcapage,normexcld,0)`	| `r msdif(df,hcapage,normexcld,1)` |
+|Female sex (N, %)      | `r np(df$female)`	| `r np(df0$female)`	| `r np(df1$female)`  |
+|Black or African American (N, %)	| `r np(df$black)`	| `r np(df0$black)`	| `r np(df1$black)`  |
+|Hispanic ethnicity (N, %)	|`r np(df$hisp)`	| `r np(df0$hisp)`	| `r np(df1$hisp)`  |
+|Years of education (years; mean SD)	| `r  msd(df,edyrs)`	| `r msdif(df,edyrs,normexcld,0)`	| `r msdif(df,edyrs,normexcld,1)` |
+|MMSE score (0-30, higher better; mean SD)	| `r  msd(df,h1rmsetotal)`	| `r msdif(df,h1rmsetotal,normexcld,0)`	| `r msdif(df,h1rmsetotal,normexcld,1)` |
+
+Notes: MMSE, Mini-Mental State Examination; SD, standard deviation;
+
+```r/
+rm(df)
+rm(df0)
+rm(df1)
+```
+
+```r/
+df3 <- dfAlgorithm[which(dfAlgorithm$hcapdx==3),]
+df2 <- dfAlgorithm[which(dfAlgorithm$hcapdx==2),]
+df1 <- dfAlgorithm[which(dfAlgorithm$hcapdx==1),]
+```
+
+<!--- survey logistic regression results -->
+<!--- estimates checked against Stata logistic regression with pweights -->
+
+<!-- Age in dementia -->
+```r/
+df <- dfAlgorithm[which(is.na(dfAlgorithm$hcap16wgtr)==FALSE),c("hhid","pn","hcapdx","hcapage","hcap16wgtr")]
+df <- df[which(df$hcapdx!=2),] # outcome is dementia, compare to normal
+df$hhidpn <- as.numeric(df$hhid)*100 + as.numeric(df$pn)
+df$dementia <- as.numeric(df$hcapdx==3)
+df$hcapagep10y <- df$hcapage/10
+surveydesign <- survey::svydesign(id = ~hhidpn, weights = ~hcap16wgtr, nest = TRUE, data = df)
+logit <- survey::svyglm(dementia~hcapagep10y, family=quasibinomial, design=surveydesign, na.action = na.omit, rescale=TRUE)
+summary_logit <- summary(logit)
+b <- summary_logit$coefficients[2,1]
+se <- summary_logit$coefficients[2,2]
+or <- round(exp(b),2)
+ll <- round(exp(b-1.96*se),2)
+ul <- round(exp(b+1.96*se),2)
+age.or.is <- paste0("weighted odds ratio (OR) ",or," per 10-year age difference, (95% confidence interval (CI): ",ll," -- ",ul,")")
+```
+
+<!-- school in dementia -->
+```r/
+df <- dfAlgorithm[which(is.na(dfAlgorithm$hcap16wgtr)==FALSE),c("hhid","pn","hcapdx","edyrs","hcapage","hcap16wgtr")]
+df <- df[which(df$hcapdx!=2),] # outcome is dementia, compare to normal
+df$hhidpn <- as.numeric(df$hhid)*100 + as.numeric(df$pn)
+df$dementia <- as.numeric(df$hcapdx==3)
+df$x <- df$edyrs
+surveydesign <- survey::svydesign(id = ~hhidpn, weights = ~hcap16wgtr, nest = TRUE, data = df)
+logit <- survey::svyglm(dementia~x+hcapage, family=quasibinomial, design=surveydesign, na.action = na.omit, rescale=TRUE)
+summary_logit <- summary(logit)
+b <- summary_logit$coefficients[2,1]
+se <- summary_logit$coefficients[2,2]
+or <- round(exp(b),2)
+ll <- round(exp(b-1.96*se),2)
+ul <- round(exp(b+1.96*se),2)
+edyrs.or.is <- paste0("weighted and age-adjusted OR ",or," per year of school, 95% CI ",ll," -- ",ul)
+```
+
+<!-- Black or Hispanic in dementia -->
+```r/
+df <- dfAlgorithm[which(is.na(dfAlgorithm$hcap16wgtr)==FALSE),c("hhid","pn","hcapdx","black","hisp","hcapage","hcap16wgtr")]
+df <- df[which(df$hcapdx!=2),] # outcome is dementia, compare to normal
+df$hhidpn <- as.numeric(df$hhid)*100 + as.numeric(df$pn)
+df$dementia <- as.numeric(df$hcapdx==3)
+df$x <- df$edyrs
+surveydesign <- survey::svydesign(id = ~hhidpn, weights = ~hcap16wgtr, nest = TRUE, data = df)
+logit <- survey::svyglm(dementia~black+hisp+hcapage, family=quasibinomial, design=surveydesign, na.action = na.omit, rescale=TRUE)
+summary_logit <- summary(logit)
+b.black <- summary_logit$coefficients[2,1]
+se.black <- summary_logit$coefficients[2,2]
+b.hisp <- summary_logit$coefficients[3,1]
+se.hisp <- summary_logit$coefficients[3,2]
+or.black <- round(exp(b.black),2)
+ll.black <- round(exp(b.black-1.96*se),2)
+ul.black <- round(exp(b.black+1.96*se),2)
+or.hisp <- round(exp(b.hisp),2)
+ll.hisp <- round(exp(b.hisp-1.96*se),2)
+ul.hisp <- round(exp(b.hisp+1.96*se),2)
+black.or.is <- paste0("weighted and age-adjusted OR ",or.black," for Black or African-American vs white, 95% CI ",ll.black," -- ",ul.black)
+hisp.or.is <- paste0("weighted and age-adjusted OR ",or.hisp," for Hispanic vs white, 95% CI ",ll.hisp," -- ",ul.hisp)
+```
+
+<!-- MCI -->
+<!-- Age in manuscript -->
+```r/
+df <- dfAlgorithm[which(is.na(dfAlgorithm$hcap16wgtr)==FALSE),c("hhid","pn","hcapdx","hcapage","hcap16wgtr")]
+df <- df[which(df$hcapdx!=3),] # outcome is MCI, compare to normal
+df$hhidpn <- as.numeric(df$hhid)*100 + as.numeric(df$pn)
+df$mci <- as.numeric(df$hcapdx==2)
+df$hcapagep10y <- df$hcapage/10
+surveydesign <- survey::svydesign(id = ~hhidpn, weights = ~hcap16wgtr, nest = TRUE, data = df)
+logit <- survey::svyglm(mci~hcapagep10y, family=quasibinomial, design=surveydesign, na.action = na.omit, rescale=TRUE)
+summary_logit <- summary(logit)
+b <- summary_logit$coefficients[2,1]
+se <- summary_logit$coefficients[2,2]
+or <- round(exp(b),2)
+ll <- round(exp(b-1.96*se),2)
+ul <- round(exp(b+1.96*se),2)
+mci.age.or.is <- paste0("weighted OR ",or," per 10-year age difference, 95% CI ",ll," -- ",ul,")")
+```
+
+<!-- school in mci -->
+```r/
+df <- dfAlgorithm[which(is.na(dfAlgorithm$hcap16wgtr)==FALSE),c("hhid","pn","hcapdx","edyrs","hcapage","hcap16wgtr")]
+df <- df[which(df$hcapdx!=3),] # outcome is mci , compare to normal
+df$hhidpn <- as.numeric(df$hhid)*100 + as.numeric(df$pn)
+df$mci <- as.numeric(df$hcapdx==2)
+df$x <- df$edyrs
+surveydesign <- survey::svydesign(id = ~hhidpn, weights = ~hcap16wgtr, nest = TRUE, data = df)
+logit <- survey::svyglm(mci ~ x+hcapage, family=quasibinomial, design=surveydesign, na.action = na.omit, rescale=TRUE)
+summary_logit <- summary(logit)
+b <- summary_logit$coefficients[2,1]
+se <- summary_logit$coefficients[2,2]
+or <- round(exp(b),2)
+ll <- round(exp(b-1.96*se),2)
+ul <- round(exp(b+1.96*se),2)
+mci.edyrs.or.is <- paste0("weighted and age-adjusted OR ",or," per year of school, 95% CI ",ll," -- ",ul)
+```
+
+<!-- Black or Hispanic in mci -->
+```r/
+df <- dfAlgorithm[which(is.na(dfAlgorithm$hcap16wgtr)==FALSE),c("hhid","pn","hcapdx","black","hisp","hcapage","hcap16wgtr")]
+df <- df[which(df$hcapdx!=3),] # outcome is mci, compare to normal
+df$hhidpn <- as.numeric(df$hhid)*100 + as.numeric(df$pn)
+df$mci  <- as.numeric(df$hcapdx==2)
+df$x <- df$edyrs
+surveydesign <- survey::svydesign(id = ~hhidpn, weights = ~hcap16wgtr, nest = TRUE, data = df)
+logit <- survey::svyglm(mci ~black+hisp+hcapage, family=quasibinomial, design=surveydesign, na.action = na.omit, rescale=TRUE)
+summary_logit <- summary(logit)
+b.black <- summary_logit$coefficients[2,1]
+se.black <- summary_logit$coefficients[2,2]
+b.hisp <- summary_logit$coefficients[3,1]
+se.hisp <- summary_logit$coefficients[3,2]
+or.black <- round(exp(b.black),2)
+ll.black <- round(exp(b.black-1.96*se),2)
+ul.black <- round(exp(b.black+1.96*se),2)
+or.hisp <- round(exp(b.hisp),2)
+ll.hisp <- round(exp(b.hisp-1.96*se),2)
+ul.hisp <- round(exp(b.hisp+1.96*se),2)
+mci.black.or.is <- paste0("weighted and age-adjusted OR ",or.black," for Black or African-American vs white, 95% CI ",ll.black," -- ",ul.black)
+mci.hisp.or.is <- paste0("weighted and age-adjusted OR ",or.hisp," for Hispanic vs white, 95% CI ",ll.hisp," -- ",ul.hisp)
+```
+
+
+
+
+The results of the classification algorithm are displayed in Figure X and the criteria
+are described in more detail in Table X. A total of `r dfAlgorithm_results$n[which(dfAlgorithm_results$node=="n51")]`
+individuals [mean (SD) age, `r msd(df3,hcapage)`;
+`r nif(df3,df3$female,1)` women (`r pif(df3,df3$female,1)`) and
+`r nif(df3,df3$female,0)` men (`r pif(df3,df3$female,0)`)] were classified as having dementia, and
+`r dfAlgorithm_results$n[which(dfAlgorithm_results$node=="n52")]` individuals were classified as having MCI
+[mean (SD) age, `r msd(df2,hcapage)` years,
+`r nif(df3,df3$female,1)` women (`r pif(df3,df3$female,1)`) and
+`r nif(df3,df3$female,0)` men (`r pif(df3,df3$female,0)`)].
+Numbers and weighted estimates are presented for the classification of dementia (Table X) and MCI (Table Y) among all persons recruited to HCAP.
+People with dementia were more likely to be older (`r age.or.is`), had fewer years of school (`r edyrs.or.is`), and were more likely to be Black (`r black.or.is`) or Hispanic (`r hisp.or.is`) than White. MCI was more frequent in people who were older (`r mci.age.or.is`), had fewer years of school (`r mci.edyrs.or.is`), and Black (`r mci.black.or.is`) or Hispanic (`r mci.hisp.or.is`).
+
+
+**Table 2. Details for HCAP dementia and MCI classification algorithm (N=3,496)**
+
+| Category |	Criteria	| Total N | Weighted <br />Prevalence (%) |
+|:---------|:-----------|--------:|--------------------:|
+|**Dementia** |	**A.** Performance in the impaired range (a score of 35 or less on standardized and normalized cognitive domains) in 2 or more domains, and <br />**B.** Informant-rated functional impairment (IQCODE score ≥ 3.4 or Blessed Part I score ≥ 2)	|`r dfAlgorithm_results$n[which(dfAlgorithm_results$node=="n51")]` |`r round(100*dfAlgorithm_results$Npw[which(dfAlgorithm_results$node=="n51")],1)`|
+|**Mild cognitive impairment (1)**|**A.**	Performance in the impaired range (35 or less) on 2 or more of 5 cognitive domains, and<br />**B.** No informant-rated functional impairment (IQCODE score < 3.4 and Blessed Part 1 score <2)|`r dfAlgorithm_results$n[which(dfAlgorithm_results$node=="n32")]` |`r round(100*dfAlgorithm_results$Npw[which(dfAlgorithm_results$node=="n32")],1)`|
+|**Mild cognitive impairment (2)**|**A.**	Performance in the impaired range (35 or less) on 1 of 5 cognitive domains, and one of the following:<br />**B1.** 	Informant-rated cognitive concerns (IQCODE score > 3, or Blessed Dementia Rating Scale (Part I) > 0), or<br />**B2.**	Self-reported worsening memory over the previous 2 years [HRS Core PD102 = 3]|`r dfAlgorithm_results$n[which(dfAlgorithm_results$node=="n33")]+dfAlgorithm_results$n[which(dfAlgorithm_results$node=="n41")]` |`r round(100*(dfAlgorithm_results$Npw[which(dfAlgorithm_results$node=="n33")]+dfAlgorithm_results$Npw[which(dfAlgorithm_results$node=="n41")]),1)`|
+|**Normal (1)**|**A.** Performance in the impaired range (35 or less) on 1 of 5 cognitive domains, and<br />**B1.** No informant-rated cognitive concerns (IQCODE score ≤ 3, and Blessed Dementia Rating Scale (Part I) = 0), and <br />**B2.** No self-reported worsening memory over the previous 2 years [HRS Core PD102 ≠ 3]|`r dfAlgorithm_results$n[which(dfAlgorithm_results$node=="n42")]` |`r round(100*dfAlgorithm_results$Npw[which(dfAlgorithm_results$node=="n42")],1)`|
+|**Normal (2)**|**A.**	Performance in the impaired range (35 or less) on 0 of 5 cognitive domains|`r dfAlgorithm_results$n[which(dfAlgorithm_results$node=="n23")]` |`r round(100*dfAlgorithm_results$Npw[which(dfAlgorithm_results$node=="n23")],1)`|
+
+Notes: 4 of 5 cognitive domains are standardized to a T score distribution, scores of 35 or less represent performance 1.5 standard deviation units, or worse, from the mean expected in a sample people assumed to be free from dementia and with the same age, sex, race/ethnicity and educational background as the tested person. The orientation domain, which is measured by 10 items from the Mini-Mental State Examination, is not standardized or adjusted for demographics. Two or more errors on these 10 orientation questions is the definition of impairment. Abbreviations: IQCODE, Informant Questionnaire on Cognitive Decline in the Elderly 6; Blessed Dementia Rating Scale (Part I) 7; PD102 is a single question assessed in the HRS 2016 Core Interview: Compared to two years ago, would you say your memory is better now, about the same, or worse now than it was then? Responses of 3 code for worse.
+
+<!-- Sociodemographics table by dementia classification -->
+<!-- in Stata b/c R margins package (https://cran.r-project.org/web/packages/margins/) ->
+<!-- does not return same results as Stata -->
+
+```s/
+qui {
+  use /Users/rnj/Dropbox/Work/HCAP22/POSTED/ANALYSIS/Dementia-algorithm/algorithm.dta , clear
+	gen dementia=hcapdx==3 if hcapdx~=2 & missing(hcapdx)~=1
+	gen mci=hcapdx==2 if hcapdx~=3 & missing(hcapdx)~=1
+  gen age7584=inrange(hcapage,75,84) if missing(hcapage)~=1
+  gen age85up=inrange(hcapage,85,200) if missing(hcapage)~=1
+	gen agecat=age7584+2*age85up
+	recode edyrs (0/11=1)(12=2)(13/15=3)(16/max=4) , gen(edlev)
+	center hcapage if missing(hcapdx)~=1
+	tempfile w
+	save `w'
+	foreach u in dementia mci {
+		 use `w', clear
+	   * agecat -------------------------------------------------
+     logit `u' i.agecat [pw=hcap16wgtr]
+	   mat b=e(b)
+	   mat se=vecdiag(e(V))
+	   mat list b
+	   mat list se
+	   mat results=(b\se)'
+	   local nrow = rowsof(results)
+	   forvalues i=1/`nrow' {
+	   	mat results[`i',2]=results[`i',2]^.5
+	   }
+	   mat list results
+	   mat colnames results = est se
+     margins agecat
+	   mat E=r(table)
+	   mat E=E'
+	   mat resultsagecat=results
+	   mat Eagecat=E
+	   * sex ----------------------------------------------------
+	   use `w' , clear
+	   logit `u' i.female chcapage [pw=hcap16wgtr]
+	   mat b=e(b)
+	   mat se=vecdiag(e(V))
+	   mat list b
+	   mat list se
+	   mat results=(b\se)'
+	   local nrow = rowsof(results)
+	   forvalues i=1/`nrow' {
+	   	mat results[`i',2]=results[`i',2]^.5
+	   }
+	   mat list results
+		 mat colnames results = est se
+	   margins female
+	   mat E=r(table)
+	   mat E=E'
+	   mat resultsfemale=results
+	   mat Efemale=E
+	   * race and ethnicity -------------------------------------
+	   use `w' , clear
+	   logit `u' i.racecat chcapage [pw=hcap16wgtr]
+	   mat b=e(b)
+	   mat se=vecdiag(e(V))
+	   mat list b
+	   mat list se
+	   mat results=(b\se)'
+	   local nrow = rowsof(results)
+	   forvalues i=1/`nrow' {
+	   	mat results[`i',2]=results[`i',2]^.5
+	   }
+	   mat list results
+		 mat colnames results = est se
+	   margins racecat
+	   mat E=r(table)
+	   mat E=E'
+	   mat resultsracecat=results
+	   mat Eracecat=E
+	   * education level ----------------------------------------
+	   use `w' , clear
+	   logit `u' ib(last).edlev chcapage [pw=hcap16wgtr]
+	   mat b=e(b)
+	   mat se=vecdiag(e(V))
+	   mat list b
+	   mat list se
+	   mat results=(b\se)'
+	   local nrow = rowsof(results)
+	   forvalues i=1/`nrow' {
+	   	mat results[`i',2]=results[`i',2]^.5
+	   }
+	   mat list results
+		 mat colnames results = est se
+	   margins edlev
+	   mat E=r(table)
+	   mat E=E'
+	   mat resultsedlev=results
+	   mat Eedlev=E
+	   * matsave ------------------------------------------------
+	   foreach x in    ///
+	     resultsagecat ///
+	   	 Eagecat       ///
+	   	 resultsfemale ///
+	   	 Efemale  ///
+	   	 resultsracecat ///
+	   	 Eracecat ///
+	   	 resultsedlev ///
+	   	 Eedlev {
+			 cap mat drop `x'`u'
+			 mat `x'`u'=`x'
+	   	 cap erase `x'`u'.dta
+	     mat list `x'`u'
+	   	 clear
+       matsave `x'`u' , replace
+     }
+	 }
+	 use `w' , clear
+	 keep if missing(hcapdx)~=1
+   save analysis.dta , replace
+}
+```
+
+```r/
+a <- haven::read_dta("analysis.dta")
+ad <- a[which(a$hcapdx==3),]
+am <- a[which(a$hcapdx==2),]
+Eda <- haven::read_dta("Eagecatdementia.dta")
+Edf <- haven::read_dta("Efemaledementia.dta")
+Edr <- haven::read_dta("Eracecatdementia.dta")
+Ede <- haven::read_dta("Eedlevdementia.dta")
+rda <- haven::read_dta("resultsagecatdementia.dta")
+rdf <- haven::read_dta("resultsfemaledementia.dta")
+rdr <- haven::read_dta("resultsracecatdementia.dta")
+rde <- haven::read_dta("resultsedlevdementia.dta")
+Ema <- haven::read_dta("Eagecatmci.dta")
+Emf <- haven::read_dta("Efemalemci.dta")
+Emr <- haven::read_dta("Eracecatmci.dta")
+Eme <- haven::read_dta("Eedlevmci.dta")
+rma <- haven::read_dta("resultsagecatmci.dta")
+rmf <- haven::read_dta("resultsfemalemci.dta")
+rmr <- haven::read_dta("resultsracecatmci.dta")
+rme <- haven::read_dta("resultsedlevmci.dta")
+```
+
+<!-- functions to extract results for table -->
+```r/
+wp <- function(df,x) {
+   weights::rd(100*df$b[x],0)
+}
+wpci <- function(df,x) {
+   paste0("(",weights::rd(100*(df$b[x]-1.96*df$se[x]),0),", ",round(100*(df$b[x]+1.96*df$se[x]),0),")")
+}
+wor <- function(df,x){
+	 or.is <- weights::rd(exp(df$est[x]),1)
+	 ll.is <- weights::rd(exp(df$est[x]-1.96*df$se[x]),1)
+	 ul.is <- weights::rd(exp(df$est[x]+1.96*df$se[x]),1)
+	 paste0(or.is," (",ll.is,", ",ul.is,")")
+}
+```
+
+
+
+
+\newpage
+
+
+**Table X. Group differences in prevalence of dementia among HCAP participants (N=3,496)**
+
+|Variable               |Total | N |%|95% CI| OR (95% CI)|N |%|95% CI| OR (95% CI)|
+|:----------------------|--:|--:|--:|-----:|------------:|--:|--:|-----:|------------:|
+|**Age group (years)**  | | | | | | | | | |
+|65 - 74                |`r nif(a,a$agecat,0)`| `r nif(ad,ad$agecat,0)`|`r wp(Eda,1)`|`r wpci(Eda,1)`|ref|`r nif(am,am$agecat,0)`|`r wp(Ema,1)`|`r wpci(Ema,1)`|ref|
+|75 - 84                |`r nif(a,a$agecat,1)`| `r nif(ad,ad$agecat,1)`|`r wp(Eda,2)`|`r wpci(Eda,2)`|`r wor(rda,2)`  |`r nif(am,am$agecat,1)`|`r wp(Ema,2)`|`r wpci(Ema,2)`|`r wor(rma,2)`|
+|85+                    |`r nif(a,a$agecat,2)`| `r nif(ad,ad$agecat,2)`|`r wp(Eda,3)`|`r wpci(Eda,3)`|`r wor(rda,3)`  |`r nif(am,am$agecat,2)`|`r wp(Ema,3)`|`r wpci(Ema,3)`|`r wor(rma,3)`|
+|**Sex**                | | | | | | | | | |
+|Men                    |`r nif(a,a$female,0)`| `r nif(ad,ad$female,0)`|`r wp(Edf,1)`|`r wpci(Edf,1)`|ref|`r nif(am,am$female,0)`|`r wp(Emf,1)`|`r wpci(Emf,1)`|ref|
+|Women                  |`r nif(a,a$female,1)`| `r nif(ad,ad$female,1)`|`r wp(Edf,2)`|`r wpci(Edf,2)`|`r wor(rdf,2)`|`r nif(am,am$female,1)`|`r wp(Emf,2)`|`r wpci(Emf,2)`|`r wor(rmf,2)`|
+|**Race and Ethnicity** | | | | | | | | | |
+|Black/African American |`r nif(a,a$racecat3,1)` | `r nif(ad,ad$racecat3,1)`|`r wp(Edr,2)`|`r wpci(Edr,2)`|`r wor(rdr,2)`  |`r nif(am,am$racecat3,1)`|`r wp(Emr,2)`|`r wpci(Emr,2)`|`r wor(rmr,2)`|
+|Hispanic or Latino     |`r nif(a,a$racecat3,2)`| `r nif(ad,ad$racecat3,2)`|`r wp(Edr,3)`|`r wpci(Edr,3)`|`r wor(rdr,3)`  |`r nif(am,am$racecat3,2)`|`r wp(Emr,3)`|`r wpci(Emr,3)`|`r wor(rmr,3)`|
+|White                  |`r nif(a,a$racecat3,0)`| `r nif(ad,ad$racecat3,0)`|`r wp(Edr,1)`|`r wpci(Edr,1)`|ref             |`r nif(am,am$racecat3,0)`|`r wp(Emr,1)`|`r wpci(Emr,1)`|ref|
+|**Educational attainment**| | | | | | | | |
+|Less than HS           |`r nif(a,a$edlev,1)` | `r nif(ad,ad$edlev,1)`|`r wp(Ede,1)`|`r wpci(Ede,1)`|`r wor(rde,1)`  |`r nif(am,am$edlev,1)`|`r wp(Eme,1)`|`r wpci(Eme,1)`|`r wor(rme,1)`|
+|High school            |`r nif(a,a$edlev,2)` | `r nif(ad,ad$edlev,2)`|`r wp(Ede,2)`|`r wpci(Ede,2)`|`r wor(rde,2)`  |`r nif(am,am$edlev,2)`|`r wp(Eme,2)`|`r wpci(Eme,2)`|`r wor(rme,2)`|
+|Some college           |`r nif(a,a$edlev,3)` | `r nif(ad,ad$edlev,3)`|`r wp(Ede,3)`|`r wpci(Ede,3)`|`r wor(rde,3)`  |`r nif(am,am$edlev,3)`|`r wp(Eme,3)`|`r wpci(Eme,3)`|`r wor(rme,3)`|
+|College degree or more |`r nif(a,a$edlev,4)` | `r nif(ad,ad$edlev,4)`|`r wp(Ede,4)`|`r wpci(Ede,4)`|ref             |`r nif(am,am$edlev,4)`|`r wp(Eme,4)`|`r wpci(Eme,4)`|ref|
+
+Notes: N, observed number in variable category with AD or MCI; %, prevalence of dementia or MCI in variable category, estimated with sampling weights; CI, confidence interval; OR, odds ratio estimated with sampling weights; Marginal prevalence estimates for sex, race and ethnicity, and educational attainment reflect adjustment for age.
+
+\newpage
+
+**Prevalence of dementia and MCI limiting to persons with age 71 and older**
+
+```s/
+qui {
+   use analysis.dta if hcapage>70
+}
+*ad <- a[which(a$hcapdx==3),]
+*am <- a[which(a$hcapdx==2),]
+```
+
+To compare prevalence estimates more directly to those obtained in HRS/ADAMS,
+we restrict to those aged at least 71 years at the time of HCAP Interview
+(N = `s `c(N)'`).
+
+```s/
+qui {
+   cap drop mci
+	 cap drop dementia
+	 gen mci = hcapdx==2 if missing(hcapdx)~=1
+	 gen dementia = hcapdx==3 if missing(hcapdx)~=1
+	 su mci if mci==1
+   local nmci = `r(N)'
+   su dementia if dementia==1
+   local ndementia = `r(N)'
+   logit mci [pweight=hcap16wgtr]
+   local pmci        : di %4.1f 100 * invlogit(_b[_cons])
+   local pmcill      : di %4.1f 100 * invlogit(_b[_cons]-1.96*_se[_cons])
+   local pmciul      : di %4.1f 100 * invlogit(_b[_cons]+1.96*_se[_cons])
+   logit dementia [pweight=hcap16wgtr]
+   local pdementia   : di %4.1f 100 * invlogit(_b[_cons])
+   local pdementiall : di %4.1f 100 * invlogit(_b[_cons]-1.96*_se[_cons])
+   local pdementiaul : di %4.1f 100 * invlogit(_b[_cons]+1.96*_se[_cons])
+}
+```
+
+Among these participants, `s `nmci'` were classified as having MCI (weighted
+prevalence `s `pmci'`%, 95% CI: `s `pmcill'`,`s `pmciul'`), and
+`s `ndementia'` were classified as having dementia (weighted
+prevalence `s `pdementia'`%, 95% CI: `s `pdementiall'`,`s `pdementiaul'`).
+
+
+
+
+
+
+
+(fin)
