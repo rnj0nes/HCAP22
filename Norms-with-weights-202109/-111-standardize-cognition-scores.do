@@ -304,8 +304,34 @@ foreach x in mem exf lfl ori vis gcp {
 			r gen sp`y'1=`y'
 			r gen sp`y'2 = (max((`y'-`sp`y'_knot1')^3,0)-(`sp`y'_knot4'-`sp`y'_knot3')^-1 * (max((`y'-`sp`y'_knot3')^3,0)*(`sp`y'_knot4'-`sp`y'_knot1')-max((`y'-`sp`y'_knot4')^3,0)*(`sp`y'_knot3'-`sp`y'_knot1'))) / (`sp`y'_knot4'-`sp`y'_knot1')^2 if missing(`y')~=1
 	 		r gen sp`y'3 = (max((`y'-`sp`y'_knot2')^3,0)-(`sp`y'_knot4'-`sp`y'_knot3')^-1 * (max((`y'-`sp`y'_knot3')^3,0)*(`sp`y'_knot4'-`sp`y'_knot2')-max((`y'-`sp`y'_knot4')^3,0)*(`sp`y'_knot3'-`sp`y'_knot2'))) / (`sp`y'_knot4'-`sp`y'_knot1')^2 if missing(`y')~=1
+	      *** reg `y'_blom sp`y'1 sp`y'2 sp`y'3 [fw=hcap16wgt]
+			*** r gen P`y'_blom = _b[_cons]+sp`y'1*_b[sp`y'1]+sp`y'2*_b[sp`y'2]+sp`y'3*_b[sp`y'3]
+			*** discovered a potential issue 2022-07-22 in the code for the two lines above
+			*** the issue is the generated do file (e.g., gen_exf_blom_from_exf.do) looks like this:
+			*** > gen spexf1=exf
+			*** > gen spexf2 = (max((exf--.14765)^3,0)-(.243-.123)^-1 * (max((exf-.123)^3,0)*(.243--.14765)-max((exf-.243)^3,0)*(.123--.14765))) / (.243--.14765)^2 if missing(exf)~=1
+			*** > gen spexf3 = (max((exf-.0264499999999999)^3,0)-(.243-.123)^-1 * (max((exf-.123)^3,0)*(.243-.0264499999999999)-max((exf-.243)^3,0)*(.123-.0264499999999999))) / (.243--.14765)^2 if missing(exf)~=1
+			*** > gen Pexf_blom = _b[_cons]+spexf1*_b[spexf1]+spexf2*_b[spexf2]+spexf3*_b[spexf3]
+			*** > * have a nice day
+			*** which refers to regression parameters ("_b[_cons]") that are only available for the 
+			*** most recently estimated regression model.
+			*** 
+			*** Since this "do" file is called below ("include gen_`y'_blom_from_`y'.do")
+			*** the code as written probably works as intended, but the 
+			*** do file is not as intended: I wanted the regression parameter estimates hard
+			*** coded into the do file so that the programs could be reused.
+			*** Here is the start of my correction
 	      reg `y'_blom sp`y'1 sp`y'2 sp`y'3 [fw=hcap16wgt]
-			r gen P`y'_blom = _b[_cons]+sp`y'1*_b[sp`y'1]+sp`y'2*_b[sp`y'2]+sp`y'3*_b[sp`y'3]
+			local b0 = _b[_cons]
+			local b1 = _b[sp`y'1]
+			local b2 = _b[sp`y'2]
+			local b3 = _b[sp`y'3]
+			r gen P`y'_blom = `b0'+sp`y'1*`b1'+sp`y'2*`b2'+sp`y'3*`b3'
+			macro drop b0
+			macro drop b1
+			macro drop b2
+			macro drop b3
+			*** This is the end of my correction 2022-07-22
 			predict p`y'_blom
 			r * have a nice day
 			rdoc close
