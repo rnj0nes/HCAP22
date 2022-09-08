@@ -1,0 +1,164 @@
+TITLE: 
+  Variable List - 
+
+  vdmde1z : vdmde1_z1 = (vdmde1 -        .001653405662)/         10.00330681
+  vdmde2z : vdmde2_z1 = (vdmde2 -        .003368133996)/         25.00673627
+  vdmde3 : MMSE 3 word delayed recall (0-3)
+    0: 0-1
+    1: 2
+  vdmde4z : vdmde4_z1 = (vdmde4 -         .00202711025)/         11.00405422
+  vdmde5z : vdmde5_z1 = (vdmde5 -        .002063232012)/         12.00412646
+  vdmre1z : vdmre1_z1 = (vdmre1 -        .001549909736)/         20.00309982
+  vdmre2z : vdmre2_z1 = (vdmre2 -        .001713271102)/         15.00342654
+  vdexf1z : vdexf1_z1 = (vdexf1 -        .002350383874)/         17.00470077
+  vdexf2z : vdexf2_z1 = (vdexf2 -      .00004915522373)/         .3924776838
+  vdexf7z : vdexf7_z1 = (vdexf7 -          409.0197119)/         175.0394239
+  vdasp1z : vdasp1_z1 = (vdasp1 -        .007827027941)/         71.01565406
+  vdasp2z : vdasp2_z1 = (vdasp2 -      .00005338379933)/         .8074956097
+  vdasp3 : MMSE spell world backwards
+  vdasp4z : vdasp4_z1 = (vdasp4 -        .006999674533)/         80.01399935
+  vdasp5z : vdasp5_z1 = (vdasp5 -         .00329259995)/          37.0065852
+  vdlfl1z : vdlfl1_z1 = (vdlfl1 -        .004106468202)/         43.00821294
+  vdlfl2 : Naming 2 items HRS TICS scissors, cactus
+    0: 0-1
+    1: 2
+  vdlfl3 : Naming 2 items MMSE
+    0: 0-1
+    1: 2
+  vdlfl4 : MMSE write a sentence
+  vdlfl5 : MMSE read and follow command
+  vdlfl6 : 1066 object naming
+    0: 0-2
+    1: 3
+    2: 4
+  vdori1z : vdori1_z1 = (vdori1 -       .0008432221464)/         10.00168644
+  vdvis1z : vdvis1_z1 = (vdvis1 -        .001456089426)/         11.00291218
+  rnjid : 
+ 
+DATA: 
+  FILE = __000001.dat ;
+VARIABLE:
+  NAMES = 
+    vdmde1z vdmde2z vdmde3 vdmde4z vdmde5z vdmre1z vdmre2z vdexf1z
+vdexf2z vdexf7z vdasp1z vdasp2z vdasp3 vdasp4z vdasp5z vdlfl1z 
+vdlfl2 vdlfl3 vdlfl4 vdlfl5 vdlfl6 vdori1z vdvis1z rnjid ; 
+  MISSING ARE ALL (-9999) ; 
+  CATEGORICAL = 
+    vdmde3
+    vdasp3
+    vdlfl2
+    vdlfl3
+    vdlfl4
+    vdlfl5
+    vdlfl6
+    ;
+  IDVARIABLE = rnjid ;
+ANALYSIS: 
+estimator=mlr ; 
+link=probit ; 
+integration = montecarlo ; 
+algorithm=integration ; 
+ 
+OUTPUT: 
+stdyx ; 
+svalues ; 
+ 
+SAVEDATA: 
+save=fscores ; 
+file=eapgcp.dat ; 
+ 
+MODEL: 
+[vdmde1z@0.50808] ; 
+[vdmde2z@0.28933] ; 
+[vdmde4z@0.52346] ; 
+[vdmde5z@0.41643] ; 
+[vdmre1z@0.92345] ; 
+[vdmre2z@0.67937] ; 
+[vdexf1z@0.72185] ; 
+[vdexf2z@0.38482] ; 
+[vdexf7z@0.61216] ; 
+[vdasp1z@0.43968] ; 
+[vdasp2z@0.38995] ; 
+[vdasp4z@0.36371] ; 
+[vdasp5z@0.39160] ; 
+[vdlfl1z@0.37053] ; 
+[vdori1z@0.93105] ; 
+[vdvis1z@0.74042] ; 
+[vdmde3$1@-1.85796] ; 
+[vdasp3$1@-2.64264] ; 
+[vdasp3$2@-2.07755] ; 
+[vdasp3$3@-1.55651] ; 
+[vdasp3$4@-0.95365] ; 
+[vdasp3$5@-0.75784] ; 
+[vdlfl2$1@-1.83838] ; 
+[vdlfl3$1@-2.89899] ; 
+[vdlfl4$1@-1.72253] ; 
+[vdlfl5$1@-1.98548] ; 
+[vdlfl6$1@-2.08926] ; 
+[vdlfl6$2@-0.77541] ; 
+mem by vdmde1z@1 ; 
+mem by vdmde2z@0.77853 ; 
+mem by vdmde3@4.91364 ; 
+mem by vdmde4z@1.03554 ; 
+mem by vdmde5z@0.84301 ; 
+mem by vdmre1z@0.38529 ; 
+mem by vdmre2z@0.54539 ; 
+exf by vdexf1z@1 ; 
+exf by vdexf2z@1.12231 ; 
+exf by vdexf7z@0.85507 ; 
+exf by vdasp1z@1.06007 ; 
+exf by vdasp2z@0.55646 ; 
+exf by vdasp3@4.52935 ; 
+exf by vdasp4z@0.61980 ; 
+exf by vdasp5z@0.65700 ; 
+lfl by vdlfl1z@1 ; 
+lfl by vdlfl2@8.28472 ; 
+lfl by vdlfl3@6.79499 ; 
+lfl by vdlfl4@5.48611 ; 
+lfl by vdlfl5@4.62161 ; 
+lfl by vdlfl6@5.19551 ; 
+gcp by mem@1 ; 
+gcp by exf@0.81397 ; 
+gcp by lfl@0.57162 ; 
+gcp by vdori1z@0.44396 ; 
+gcp by vdvis1z@0.70301 ; 
+ceradwl by vdmde1z@1 ; 
+ceradwl by vdmre1z@1 ; 
+lm by vdmde2z@1 ; 
+lm by vdmre2z@1 ; 
+mem with ceradwl@0 ; 
+mem with lm@0 ; 
+ceradwl with lm@0 ; 
+ceradwl with gcp@0 ; 
+ceradwl with exf@0 ; 
+ceradwl with lfl@0 ; 
+ceradwl with vdori1z@0 ; 
+ceradwl with vdvis1z@0 ; 
+lm with gcp@0 ; 
+lm with exf@0 ; 
+lm with lfl@0 ; 
+lm with vdori1z@0 ; 
+lm with vdvis1z@0 ; 
+vdmde1z@0.02378 ; 
+vdmde2z@0.01599 ; 
+vdmde4z@0.04119 ; 
+vdmde5z@0.04644 ; 
+vdmre1z@0.00528 ; 
+vdmre2z@0.01504 ; 
+vdexf1z@0.02169 ; 
+vdexf2z@0.01694 ; 
+vdexf7z@0.01922 ; 
+vdasp1z@0.00598 ; 
+vdasp2z@0.00378 ; 
+vdasp4z@0.01003 ; 
+vdasp5z@0.00974 ; 
+vdlfl1z@0.01113 ; 
+vdori1z@0.01155 ; 
+vdvis1z@0.02837 ; 
+mem@0.00924 ; 
+exf@0.00445 ; 
+lfl@0.00063 ; 
+gcp@0.03419 ; 
+ceradwl@0.00367 ; 
+lm@0.00632 ; 
+ 

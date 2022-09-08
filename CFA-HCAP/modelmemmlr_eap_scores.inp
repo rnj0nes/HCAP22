@@ -1,0 +1,70 @@
+TITLE: 
+  Variable List - 
+
+  vdmde1z : vdmde1_z1 = (vdmde1 -        .001653405662)/         10.00330681
+  vdmde2z : vdmde2_z1 = (vdmde2 -        .003368133996)/         25.00673627
+  vdmde3 : MMSE 3 word delayed recall (0-3)
+    0: 0-1
+    1: 2
+  vdmde4z : vdmde4_z1 = (vdmde4 -         .00202711025)/         11.00405422
+  vdmde5z : vdmde5_z1 = (vdmde5 -        .002063232012)/         12.00412646
+  vdmre1z : vdmre1_z1 = (vdmre1 -        .001549909736)/         20.00309982
+  vdmre2z : vdmre2_z1 = (vdmre2 -        .001713271102)/         15.00342654
+  rnjid : 
+ 
+DATA: 
+  FILE = __000001.dat ;
+VARIABLE:
+  NAMES = 
+    vdmde1z vdmde2z vdmde3 vdmde4z vdmde5z vdmre1z vdmre2z rnjid ; 
+  MISSING ARE ALL (-9999) ; 
+  CATEGORICAL = 
+    vdmde3
+    ;
+  IDVARIABLE = rnjid ;
+ANALYSIS: 
+estimator=mlr ; 
+link=probit ; 
+integration = montecarlo ; 
+algorithm=integration ; 
+ 
+OUTPUT: 
+stdyx ; 
+svalues ; 
+ 
+SAVEDATA: 
+save=fscores ; 
+file=eapmem.dat ; 
+ 
+MODEL: 
+[vdmde1z@0.51006] ; 
+[vdmde2z@0.29137] ; 
+[vdmde4z@0.52622] ; 
+[vdmde5z@0.41843] ; 
+[vdmre1z@0.92422] ; 
+[vdmre2z@0.68085] ; 
+[vdmde3$1@-1.93920] ; 
+mem by vdmde1z@1 ; 
+mem by vdmde2z@0.77291 ; 
+mem by vdmde3@5.12525 ; 
+mem by vdmde4z@0.92166 ; 
+mem by vdmde5z@0.85023 ; 
+mem by vdmre1z@0.37824 ; 
+mem by vdmre2z@0.52726 ; 
+ceradwl by vdmde1z@1 ; 
+ceradwl by vdmre1z@1 ; 
+lm by vdmde2z@1 ; 
+lm by vdmre2z@1 ; 
+mem with ceradwl@0 ; 
+mem with lm@0 ; 
+ceradwl with lm@0 ; 
+vdmde1z@0.02212 ; 
+vdmde2z@0.01511 ; 
+vdmde4z@0.04834 ; 
+vdmde5z@0.04385 ; 
+vdmre1z@0.00573 ; 
+vdmre2z@0.01553 ; 
+mem@0.04567 ; 
+ceradwl@0.00310 ; 
+lm@0.00581 ; 
+ 

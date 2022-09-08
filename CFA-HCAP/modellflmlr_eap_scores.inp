@@ -1,0 +1,63 @@
+TITLE: 
+  Variable List - 
+
+  vdlfl1z : vdlfl1_z1 = (vdlfl1 -        .004106468202)/         43.00821294
+  vdlfl2 : Naming 2 items HRS TICS scissors, cactus
+    0: 0-1
+    1: 2
+  vdlfl3 : Naming 2 items MMSE
+    0: 0-1
+    1: 2
+  vdlfl4 : MMSE write a sentence
+  vdlfl5 : MMSE read and follow command
+  vdlfl6 : 1066 object naming
+    0: 0-2
+    1: 3
+    2: 4
+  rnjid : 
+ 
+DATA: 
+  FILE = __000001.dat ;
+VARIABLE:
+  NAMES = 
+    vdlfl1z vdlfl2 vdlfl3 vdlfl4 vdlfl5 vdlfl6 rnjid ; 
+  MISSING ARE ALL (-9999) ; 
+  CATEGORICAL = 
+    vdlfl2
+    vdlfl3
+    vdlfl4
+    vdlfl5
+    vdlfl6
+    ;
+  IDVARIABLE = rnjid ;
+ANALYSIS: 
+estimator=mlr ; 
+link=probit ; 
+integration = montecarlo ; 
+algorithm=integration ; 
+ 
+OUTPUT: 
+stdyx ; 
+svalues ; 
+ 
+SAVEDATA: 
+save=fscores ; 
+file=eaplfl.dat ; 
+ 
+MODEL: 
+[vdlfl1z@0.37146] ; 
+[vdlfl2$1@-2.07906] ; 
+[vdlfl3$1@-3.25121] ; 
+[vdlfl4$1@-1.80947] ; 
+[vdlfl5$1@-2.02607] ; 
+[vdlfl6$1@-2.17818] ; 
+[vdlfl6$2@-0.82740] ; 
+lfl by vdlfl1z@1 ; 
+lfl by vdlfl2@11.28483 ; 
+lfl by vdlfl3@10.04837 ; 
+lfl by vdlfl4@6.80372 ; 
+lfl by vdlfl5@5.48982 ; 
+lfl by vdlfl6@6.54893 ; 
+vdlfl1z@0.01249 ; 
+lfl@0.01072 ; 
+ 

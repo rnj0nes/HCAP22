@@ -212,7 +212,7 @@ foreach domain in mem exf lfl gcp {
 	* 3 : MLR(probit) Factor Scores  =============================================
 	local analysis3 "`analysis2'"
 	local output3 "output(stdyx; svalues;) savelog(model`domain'mlr_eap_scores)"
-	local output3 "`output3' savedata(save=fscores; file=eap`domain'.dat;) idvariable(rnjid)"
+	local output3 "`output3' savedata(save=fscores; file=eap`domain'.dat;) idvariable(rnjid) saveinp(model`domain'mlr_eap_scores)"
 	clear
 	cap erase svalues.txt
 	runmplus_read_svalues , out(model`domain'mlr.out)
@@ -246,7 +246,7 @@ foreach domain in mem exf lfl gcp {
 	}
 	* 4 : Bayes Factor Scores  =============================================
 	local analysis4 "analysis(estimator=bayes;)"
-	local output4 "idvariable(rnjid) savelog(model`domain'bayes) log(off)"	
+	local output4 "idvariable(rnjid) savelog(model`domain'bayes) log(off) "	
 	* Bayes parameter estimates =============================================
 	cap confirm file model`domain'bayes.out
 	if _rc~=0 {
@@ -260,7 +260,7 @@ foreach domain in mem exf lfl gcp {
 	* Bayes factor scores using fixed estimates
 	local output5 "output(data imputation: ndatasets=1; save = model`domain'pv*.dat;)"
 	local output5 "`output5' savedata(file=model`domain'pv_plaus.dat; save = fscores(1); factors = `latents_`domain'' ;)"
-	local output5 "`output5' idvariable(rnjid) savelog(model`domain'bayespv) log(off)"	
+	local output5 "`output5' idvariable(rnjid) savelog(model`domain'bayespv) log(off) saveinp(model`domain'bayesPV)"	
 	cap confirm file model`domain'bayespv.out
 	if _rc~=0 {
 		runmplus ``domain'varlist' , `catis' `analysis4' `output5' `model3'
