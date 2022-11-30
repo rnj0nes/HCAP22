@@ -1,0 +1,26 @@
+gen Egcp_blom = 5.222462435236422
+replace Egcp_blom = Egcp_blom + spage1*-.1061269136729897
+replace Egcp_blom = Egcp_blom + spage2*.5664878254776816
+replace Egcp_blom = Egcp_blom + spage3*-2.160238628926259
+replace Egcp_blom = Egcp_blom + female*-1.35374762861503
+replace Egcp_blom = Egcp_blom + black*-4.36650704817179
+replace Egcp_blom = Egcp_blom + hisp*-.3940636531735271
+replace Egcp_blom = Egcp_blom + (spage1*female)*.0220658681256015
+replace Egcp_blom = Egcp_blom + (spage1*black)*.0489212647706525
+replace Egcp_blom = Egcp_blom + (spage1*hisp)*.0103990321342656
+replace Egcp_blom = Egcp_blom + (spage2*female)*-.1555431230535719
+replace Egcp_blom = Egcp_blom + (spage2*black)*-.2580044079880979
+replace Egcp_blom = Egcp_blom + (spage2*hisp)*-.0567184237339209
+replace Egcp_blom = Egcp_blom + (spage3*female)*.6508437642395967
+replace Egcp_blom = Egcp_blom + (spage3*black)*.9062689507401877
+replace Egcp_blom = Egcp_blom + (spage3*hisp)*-.2150439278394145
+replace Egcp_blom = Egcp_blom + (female*black)*.0415604742883846
+replace Egcp_blom = Egcp_blom + (female*hisp)*.0341504666862378
+replace Egcp_blom = Egcp_blom + schlyrs*-.02777264119685
+replace Egcp_blom = Egcp_blom + schlyrs*spage1*.0030089806193668
+replace Egcp_blom = Egcp_blom + schlyrs*spage2*-.0337060657640733
+replace Egcp_blom = Egcp_blom + schlyrs*spage3*.1258862914897962
+replace Egcp_blom = Egcp_blom + schlyrs*female*.0023326167007078
+replace Egcp_blom = Egcp_blom + schlyrs*black*.0059763244248664
+replace Egcp_blom = Egcp_blom + schlyrs*hisp*-.0607338694225777
+
