@@ -344,10 +344,14 @@ foreach x in mem exf lfl ori vis gcp {
 			* store the observed standard deviation (should be very close to 1)
 			su P`y'_blom if normexcld==0
 			local sd_P`y'_blom = `r(sd)'
+			cap erase genT`y'.do
+			rdoc init genT`y'.do 
+			r * local sd_P`y'_blom = `sd_P`y'_blom'
 			cap confirm file P`y'_blom.dta 
 			if _rc~=0 {
 				preserve
 				keep P`y'_blom spage* female black hisp schlyrs hcapage normexcld hhid pn hcap16wgt
+				drop normexcld // can't share normexclud as it encodes Medicare data
 				save P`y'_blom.dta , replace
 				restore			
 			}
@@ -357,6 +361,8 @@ foreach x in mem exf lfl ori vis gcp {
 				reg , coeflegend		
 				estimates store `y'	
 				local r2`y' = `e(r2)'
+				local r2`y' = `e(r2)'
+				r * local r2`y' = `e(r2)'
 				gen E`y'_blom = _b[_cons] //  black=0, hisp=0, female=0
 				replace E`y'_blom = E`y'_blom + spage1*_b[spage1]
 				replace E`y'_blom = E`y'_blom + spage2*_b[spage2]
@@ -382,6 +388,59 @@ foreach x in mem exf lfl ori vis gcp {
 				replace E`y'_blom = E`y'_blom + schlyrs*female*_b[c.schlyrs#c.female]
 				replace E`y'_blom = E`y'_blom + schlyrs*black*_b[c.schlyrs#c.black]
 				replace E`y'_blom = E`y'_blom + schlyrs*hisp*_b[c.schlyrs#c.hisp]
+				rdoc init gen_E`y'_blom.do , replace
+				local foo = _b[_cons]
+				r gen E`y'_blom = `foo' //  black=0, hisp=0, female=0
+				local foo = _b[spage1]
+				r replace E`y'_blom = E`y'_blom + spage1*`foo'
+				local foo = _b[spage2]
+				r replace E`y'_blom = E`y'_blom + spage2*`foo'
+				local foo = _b[spage3]
+				r replace E`y'_blom = E`y'_blom + spage3*`foo'
+				local foo = _b[female]
+				r replace E`y'_blom = E`y'_blom + female*`foo'
+				local foo = _b[black]
+				r replace E`y'_blom = E`y'_blom + black*`foo'
+				local foo = _b[hisp]
+				r replace E`y'_blom = E`y'_blom + hisp*`foo'
+				local foo = _b[c.spage1#c.female]
+				r replace E`y'_blom = E`y'_blom + (spage1*female)*`foo'
+				local foo = _b[c.spage1#c.black]
+				r replace E`y'_blom = E`y'_blom + (spage1*black)*`foo'
+				local foo = _b[c.spage1#c.hisp]
+				r replace E`y'_blom = E`y'_blom + (spage1*hisp)*`foo'
+				local foo = _b[c.spage2#c.female]
+				r replace E`y'_blom = E`y'_blom + (spage2*female)*`foo'
+				local foo = _b[c.spage2#c.black]
+				r replace E`y'_blom = E`y'_blom + (spage2*black)*`foo'
+				local foo = _b[c.spage2#c.hisp]
+				r replace E`y'_blom = E`y'_blom + (spage2*hisp)*`foo'
+				local foo = _b[c.spage3#c.female]
+				r replace E`y'_blom = E`y'_blom + (spage3*female)*`foo'
+				local foo = _b[c.spage3#c.black]
+				r replace E`y'_blom = E`y'_blom + (spage3*black)*`foo'
+				local foo = _b[c.spage3#c.hisp]
+				r replace E`y'_blom = E`y'_blom + (spage3*hisp)*`foo'
+				local foo = _b[c.female#c.black]
+				r replace E`y'_blom = E`y'_blom + (female*black)*`foo'
+				local foo = _b[c.female#c.hisp]
+				r replace E`y'_blom = E`y'_blom + (female*hisp)*`foo'
+				local foo = _b[c.schlyrs]
+				r replace E`y'_blom = E`y'_blom + schlyrs*`foo'
+				local foo = _b[c.schlyrs#c.spage1]
+				r replace E`y'_blom = E`y'_blom + schlyrs*spage1*`foo'
+				local foo = _b[c.schlyrs#c.spage2]
+				r replace E`y'_blom = E`y'_blom + schlyrs*spage2*`foo'
+				local foo = _b[c.schlyrs#c.spage3]
+				r replace E`y'_blom = E`y'_blom + schlyrs*spage3*`foo'
+				local foo = _b[c.schlyrs#c.female]
+				r replace E`y'_blom = E`y'_blom + schlyrs*female*`foo'
+				local foo = _b[c.schlyrs#c.black]
+				r replace E`y'_blom = E`y'_blom + schlyrs*black*`foo'
+				local foo = _b[c.schlyrs#c.hisp]
+				r replace E`y'_blom = E`y'_blom + schlyrs*hisp*`foo'
+				r 
+				rdoc close
 			}
 			if "`raceadj'" == "FALSE" {
 				* regression			
@@ -389,6 +448,7 @@ foreach x in mem exf lfl ori vis gcp {
 				reg , coeflegend	
 				estimates store `y'
 				local r2`y' = `e(r2)'
+				r * local r2`y' = `e(r2)'
 				gen E`y'_blom = _b[_cons] //  black=0, hisp=0, female=0
 				replace E`y'_blom = E`y'_blom + spage1*_b[spage1]
 				replace E`y'_blom = E`y'_blom + spage2*_b[spage2]
@@ -407,7 +467,9 @@ foreach x in mem exf lfl ori vis gcp {
 			
 			
 			gen T`y'= 50+10*((P`y'_blom-E`y'_blom)/(`sd_P`y'_blom'*sqrt(1-`r2`y''))) // SEE
-			
+			r gen T`y'= 50+10*((P`y'_blom-E`y'_blom)/(`sd_P`y'_blom'*sqrt(1-`r2`y'')))
+			r * have a nice day
+			rdoc close
 			local Tlist "`Tlist' T`y'"
 			gen IMPAIRED_`y' = T`y'<36 if missing(T`y')~=1
 			local IMPAIREDlist "`IMPAIREDlist' IMPAIRED_`y'"
